@@ -30,6 +30,7 @@ class CoinDash extends Phaser.Scene {
     this.finished = false;
     this.playerSpeed = c.playerSpeed;
     this.boostUntil = 0;
+    this.shield = 0; // ms of shield left
     this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
     this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
@@ -64,6 +65,8 @@ class CoinDash extends Phaser.Scene {
         this.boostUntil = this.time.now + 4000;
       } else {
         this.score++;
+        // Purple coins score like normal coins and also grant a 4 second drone shield.
+        if (this.coinType === 'purple') this.shield = 4000;
       }
       if (this.score > this.highScore) {
         this.highScore = this.score;
@@ -72,7 +75,9 @@ class CoinDash extends Phaser.Scene {
       playCoinSound();
       this.placeCoin();
     });
-    this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
+    this.physics.add.overlap(this.player, this.drones, () => {
+      if (this.shield <= 0) this.finish('A drone caught you!');
+    });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
@@ -118,12 +123,15 @@ class CoinDash extends Phaser.Scene {
     this.coin.body.reset(x, y);
   }
 
-  update() {
+  update(time, delta) {
     if (this.finished || this.paused) return;
     if (this.boostUntil && this.time.now >= this.boostUntil) {
       this.playerSpeed = COIN_DASH.playerSpeed;
       this.boostUntil = 0;
     }
+    // Ticks only while unpaused, so the shield survives a pause like the round timer does.
+    this.shield = Math.max(0, this.shield - delta);
+    this.player.setAlpha(this.shield > 0 ? 0.5 : 1);
     const dx =Number(this.cursors.right.isDown || this.keys.D.isDown)
       - Number(this.cursors.left.isDown || this.keys.A.isDown);
     const dy = Number(this.cursors.down.isDown || this.keys.S.isDown)
