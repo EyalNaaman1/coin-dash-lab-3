@@ -35,6 +35,26 @@ class CoinDash extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
+    // R can restart a paused round; make sure the physics world is running again.
+    this.physics.resume();
+    this.paused = false;
+    this.pausedText = this.add.text(c.width / 2, c.height / 2, 'PAUSED',
+      { font: '48px monospace', color: '#ffffff' }).setOrigin(0.5).setVisible(false);
+    this.input.keyboard.on('keydown-P', () => this.togglePause());
+  }
+
+  togglePause() {
+    if (this.finished) return;
+    this.paused = !this.paused;
+    if (this.paused) {
+      // Keep the time left so the round resumes where it stopped.
+      this.remaining = this.deadline - this.time.now;
+      this.physics.pause();
+    } else {
+      this.deadline = this.time.now + this.remaining;
+      this.physics.resume();
+    }
+    this.pausedText.setVisible(this.paused);
   }
 
   placeCoin() {
@@ -50,8 +70,8 @@ class CoinDash extends Phaser.Scene {
   }
 
   update() {
-    if (this.finished) return;
-    const dx = Number(this.cursors.right.isDown || this.keys.D.isDown)
+    if (this.finished || this.paused) return;
+    const dx =Number(this.cursors.right.isDown || this.keys.D.isDown)
       - Number(this.cursors.left.isDown || this.keys.A.isDown);
     const dy = Number(this.cursors.down.isDown || this.keys.S.isDown)
       - Number(this.cursors.up.isDown || this.keys.W.isDown);
