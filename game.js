@@ -1,4 +1,21 @@
 /* global Phaser, COIN_DASH */
+let audioCtx;
+// Two-tone rising "ding", synthesized on the fly so no audio assets are needed.
+function playCoinSound() {
+  if (!audioCtx) audioCtx = new AudioContext();
+  audioCtx.resume();
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(988, t);
+  osc.frequency.setValueAtTime(1319, t + 0.07);
+  gain.gain.setValueAtTime(0.2, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.3);
+}
 class CoinDash extends Phaser.Scene {
   constructor() { super('CoinDash'); }
 
@@ -29,6 +46,7 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
+      playCoinSound();
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
