@@ -25,6 +25,7 @@ class CoinDash extends Phaser.Scene {
     this.score = 0;
     this.highScore = Number(localStorage.getItem(HIGH_SCORE_KEY)) || 0;
     this.finished = false;
+    this.shield = 0; // ms of shield left
     this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
     this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
@@ -47,6 +48,7 @@ class CoinDash extends Phaser.Scene {
     }
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
+      if (this.coinIsPurple) this.shield = 4000;
       this.score++;
       if (this.score > this.highScore) {
         this.highScore = this.score;
@@ -55,7 +57,9 @@ class CoinDash extends Phaser.Scene {
       playCoinSound();
       this.placeCoin();
     });
-    this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
+    this.physics.add.overlap(this.player, this.drones, () => {
+      if (this.shield <= 0) this.finish('A drone caught you!');
+    });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
@@ -89,12 +93,18 @@ class CoinDash extends Phaser.Scene {
       x = Phaser.Math.Between(25, c.width - 25);
       y = Phaser.Math.Between(70, c.height - 25);
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
+    this.coinIsPurple = Math.random() < 0.2;
+    // Shapes have no setTint, so the purple coin is recoloured via its fill.
+    this.coin.setFillStyle(this.coinIsPurple ? 0xff00ff : c.colors.coin);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
   }
 
-  update() {
+  update(time, delta) {
     if (this.finished || this.paused) return;
+    // Ticks only while unpaused, so the shield survives a pause like the round timer does.
+    this.shield = Math.max(0, this.shield - delta);
+    this.player.setAlpha(this.shield > 0 ? 0.5 : 1);
     const dx =Number(this.cursors.right.isDown || this.keys.D.isDown)
       - Number(this.cursors.left.isDown || this.keys.A.isDown);
     const dy = Number(this.cursors.down.isDown || this.keys.S.isDown)
