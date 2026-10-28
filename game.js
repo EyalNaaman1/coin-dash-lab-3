@@ -1,5 +1,7 @@
 /* global Phaser, COIN_DASH */
 const HIGH_SCORE_KEY = 'coinDash.highScore';
+const BLUE_COIN_CHANCE = 0.4;
+const BLUE_COIN_BONUS_MS = 5000;
 let audioCtx;
 // Two-tone rising "ding", synthesized on the fly so no audio assets are needed.
 function playCoinSound() {
@@ -47,7 +49,8 @@ class CoinDash extends Phaser.Scene {
     }
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
-      this.score++;
+      if (this.isBlue) this.deadline += BLUE_COIN_BONUS_MS;
+      else this.score++;
       if (this.score > this.highScore) {
         this.highScore = this.score;
         localStorage.setItem(HIGH_SCORE_KEY, this.highScore);
@@ -91,6 +94,9 @@ class CoinDash extends Phaser.Scene {
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
+    // Shapes have no setTint, so the blue power-up is recolored with setFillStyle.
+    this.isBlue = Math.random() < BLUE_COIN_CHANCE;
+    this.coin.setFillStyle(this.isBlue ? 0x0000ff : c.colors.coin);
   }
 
   update() {
