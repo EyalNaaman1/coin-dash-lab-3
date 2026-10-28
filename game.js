@@ -25,6 +25,8 @@ class CoinDash extends Phaser.Scene {
     this.score = 0;
     this.highScore = Number(localStorage.getItem(HIGH_SCORE_KEY)) || 0;
     this.finished = false;
+    this.playerSpeed = c.playerSpeed;
+    this.boostUntil = 0;
     this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
     this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
@@ -33,8 +35,12 @@ class CoinDash extends Phaser.Scene {
     this.player = this.add.rectangle(c.width / 2, c.height / 2, 24, 24, c.colors.player);
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
-    this.coin = this.add.circle(100, 100, 9, c.colors.coin);
-    this.physics.add.existing(this.coin);
+    // Shapes can't be tinted, so the coin is a white texture tinted per placement.
+    if (!this.textures.exists('coin')) {
+      this.make.graphics({ add: false }).fillStyle(0xffffff).fillCircle(9, 9, 9)
+        .generateTexture('coin', 18, 18);
+    }
+    this.coin = this.physics.add.image(100, 100, 'coin');
     this.coin.body.setCircle(9);
     this.placeCoin();
     this.drones = this.physics.add.group();
@@ -47,7 +53,13 @@ class CoinDash extends Phaser.Scene {
     }
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
-      this.score++;
+      if (this.coinIsGreen) {
+        // Green coins score nothing; they give a 4 second speed boost instead.
+        this.playerSpeed *= 1.5;
+        this.boostUntil = this.time.now + 4000;
+      } else {
+        this.score++;
+      }
       if (this.score > this.highScore) {
         this.highScore = this.score;
         localStorage.setItem(HIGH_SCORE_KEY, this.highScore);
@@ -73,9 +85,11 @@ class CoinDash extends Phaser.Scene {
     if (this.paused) {
       // Keep the time left so the round resumes where it stopped.
       this.remaining = this.deadline - this.time.now;
+      this.boostLeft = this.boostUntil ? this.boostUntil - this.time.now : 0;
       this.physics.pause();
     } else {
       this.deadline = this.time.now + this.remaining;
+      if (this.boostLeft > 0) this.boostUntil = this.time.now + this.boostLeft;
       this.physics.resume();
     }
     this.pausedText.setVisible(this.paused);
@@ -89,17 +103,24 @@ class CoinDash extends Phaser.Scene {
       x = Phaser.Math.Between(25, c.width - 25);
       y = Phaser.Math.Between(70, c.height - 25);
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
+    // One in five coins is green (speed boost, no points).
+    this.coinIsGreen = Math.random() < 0.2;
+    this.coin.setTint(this.coinIsGreen ? 0x00ff00 : c.colors.coin);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
   }
 
   update() {
     if (this.finished || this.paused) return;
+    if (this.boostUntil && this.time.now >= this.boostUntil) {
+      this.playerSpeed = COIN_DASH.playerSpeed;
+      this.boostUntil = 0;
+    }
     const dx =Number(this.cursors.right.isDown || this.keys.D.isDown)
       - Number(this.cursors.left.isDown || this.keys.A.isDown);
     const dy = Number(this.cursors.down.isDown || this.keys.S.isDown)
       - Number(this.cursors.up.isDown || this.keys.W.isDown);
-    const direction = new Phaser.Math.Vector2(dx, dy).normalize().scale(COIN_DASH.playerSpeed);
+    const direction = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.playerSpeed);
     this.player.body.setVelocity(direction.x, direction.y);
     const seconds = Math.max(0, Math.ceil((this.deadline - this.time.now) / 1000));
     this.hud.setText(`Coins: ${this.score}   High Score: ${this.highScore}   Time: ${seconds}s`);
