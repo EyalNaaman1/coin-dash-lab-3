@@ -93,7 +93,7 @@ class CoinDash extends Phaser.Scene {
       x = Phaser.Math.Between(25, c.width - 25);
       y = Phaser.Math.Between(70, c.height - 25);
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
-    this.coinIsPurple = Math.random() < 0.2;
+    this.coinIsPurple = Math.random() < 0.4;
     // Shapes have no setTint, so the purple coin is recoloured via its fill.
     this.coin.setFillStyle(this.coinIsPurple ? 0xff00ff : c.colors.coin);
     this.coin.setPosition(x, y);
