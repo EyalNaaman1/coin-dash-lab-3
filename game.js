@@ -103,8 +103,8 @@ class CoinDash extends Phaser.Scene {
       x = Phaser.Math.Between(25, c.width - 25);
       y = Phaser.Math.Between(70, c.height - 25);
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
-    // One in five coins is green (speed boost, no points).
-    this.coinIsGreen = Math.random() < 0.2;
+    // Two in five coins are green (speed boost, no points).
+    this.coinIsGreen = Math.random() < 0.4;
     this.coin.setTint(this.coinIsGreen ? 0x00ff00 : c.colors.coin);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
